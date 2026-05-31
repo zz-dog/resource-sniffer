@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "资源嗅探器",
+  "version": "0.1.0",
+  "description": "嗅探当前页面用到的所有网络与 DOM 资源。",
+  "permissions": ["webRequest", "tabs", "storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "资源嗅探器",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
