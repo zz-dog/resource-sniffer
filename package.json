@@ -3,15 +3,22 @@
   "version": "0.1.0",
   "description": "A Chrome extension (MV3) that sniffs all resources used by a webpage.",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "tsc && node scripts/copy-static.mjs",
-    "watch": "tsc -w",
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
   "devDependencies": {
     "@types/chrome": "^0.0.270",
+    "@types/node": "^25.9.1",
     "sharp": "^0.33.5",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
   }
 }

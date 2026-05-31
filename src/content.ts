@@ -4,7 +4,7 @@
  * srcset 候选项、内联的 <source> 列表等。结果发送给后台 worker，由它
  * 与网络观察结果去重合并。
  */
-import type { MessageFromContent, Resource } from "./types.js";
+import type { MessageFromContent, Resource } from "./types";
 
 function toAbs(url: string | null | undefined): string | null {
   if (!url) return null;

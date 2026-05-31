@@ -66,11 +66,12 @@
       </select>
       <input id="search" type="search" placeholder="按 URL 过滤…" />
       <button id="refresh">刷新</button>
-      <button id="export">导出 JSON</button>
+      <button id="export">导出 ZIP</button>
       <button id="clear">清空</button>
     </header>
     <div id="summary"></div>
     <div id="list"><div class="empty">加载中…</div></div>
-    <script src="popup.js" type="module"></script>
+    <!-- popup.ts 由 Vite 打包成 popup.js，fflate 直接 bundle 进去。 -->
+    <script src="./src/popup.ts" type="module"></script>
   </body>
 </html>

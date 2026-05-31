@@ -7,7 +7,7 @@ import type {
   MessageFromContent,
   MessageFromPopup,
   Resource,
-} from "./types.js";
+} from "./types";
 
 /** tabId -> (url -> Resource)。用 Map 可以保留每个 URL 的最新记录。 */
 const perTab = new Map<number, Map<string, Resource>>();
