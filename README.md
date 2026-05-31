@@ -1,5 +1,7 @@
 # 资源嗅探器（Resource Sniffer）
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 一个使用 TypeScript 编写的 Chrome（Manifest V3）扩展，能够抓取一个网站
 使用到的全部资源——既包括通过网络发起的请求（`chrome.webRequest`），
 也包括从实时 DOM/CSS 中扫描出来的资源——并在弹窗中提供按类型筛选、
