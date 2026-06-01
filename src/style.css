@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+}
+
+/* Tailwind 无法覆盖的自定义样式 */
+.type {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: #06f;
+}
+
+.url:hover {
+  text-decoration: underline;
+}

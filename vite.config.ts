@@ -1,3 +1,5 @@
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { resolve } from "node:path";
 import { readFile, rm } from "node:fs/promises";
@@ -36,6 +38,7 @@ function sharpIcons(): Plugin {
 }
 
 export default defineConfig({
+  base: "",
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -55,5 +58,5 @@ export default defineConfig({
     // 不内联 CSS / JS 到 HTML（扩展需要独立文件）
     cssCodeSplit: true,
   },
-  plugins: [sharpIcons()],
+  plugins: [react(), tailwindcss(), sharpIcons()],
 });
