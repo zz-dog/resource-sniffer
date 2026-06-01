@@ -59,4 +59,9 @@ export default defineConfig({
     cssCodeSplit: true,
   },
   plugins: [react(), tailwindcss(), sharpIcons()],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+    },
+  },
 });

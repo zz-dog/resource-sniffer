@@ -1,4 +1,26 @@
+import {
+  DownloadIcon,
+  EraserIcon,
+  FilterIcon,
+  RefreshCwIcon,
+  SearchIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { Resource } from "../types";
+
+const ALL_TYPES_VALUE = "__all__";
 
 interface FilterBarProps {
   resources: Resource[];
@@ -26,41 +48,100 @@ export function FilterBar({
   exportProgress,
 }: FilterBarProps) {
   const types = Array.from(new Set(resources.map((r) => r.type))).sort();
+  const selectedTypeLabel = filterType || "全部类型";
+  const selectedMenuValue = filterType || ALL_TYPES_VALUE;
 
   return (
-    <header className="px-3 py-2 border-b flex gap-2 items-center flex-wrap">
-      <h1 className="text-sm m-0 flex-1">资源嗅探器</h1>
-      <select
-        className="text-xs px-2 py-1 border rounded"
-        value={filterType}
-        onChange={(e) => onFilterTypeChange(e.target.value)}
-      >
-        <option value="">全部类型 ({resources.length})</option>
-        {types.map((t) => {
-          const n = resources.filter((r) => r.type === t).length;
-          return (
-            <option key={t} value={t}>
-              {t} ({n})
-            </option>
-          );
-        })}
-      </select>
-      <input
-        type="search"
-        placeholder="按 URL 过滤…"
-        className="text-xs px-2 py-1"
-        value={searchQuery}
-        onChange={(e) => onSearchQueryChange(e.target.value)}
-      />
-      <button className="text-xs px-2 py-1" onClick={onRefresh} disabled={exporting}>
-        刷新
-      </button>
-      <button className="text-xs px-2 py-1" onClick={onExport} disabled={exporting}>
-        {exportProgress ?? "导出 ZIP"}
-      </button>
-      <button className="text-xs px-2 py-1" onClick={onClear} disabled={exporting}>
-        清空
-      </button>
+    <header className="space-y-3 border-b bg-muted/25 px-3 py-3">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="m-0 text-base font-semibold leading-none">资源嗅探器</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            捕获页面中的脚本、样式、图片和媒体资源
+          </p>
+        </div>
+        <Badge variant="secondary" className="shrink-0 rounded-md">
+          {resources.length} 项
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+        <div className="relative min-w-0">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="按 URL 搜索"
+            className="h-8 pl-8 text-xs"
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+          />
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "w-[112px] justify-start"
+            )}
+          >
+            <FilterIcon data-icon="inline-start" />
+            <span className="truncate">{selectedTypeLabel}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>资源类型</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={selectedMenuValue}
+              onValueChange={(value) =>
+                onFilterTypeChange(value === ALL_TYPES_VALUE ? "" : value)
+              }
+            >
+              <DropdownMenuRadioItem value={ALL_TYPES_VALUE}>
+                全部类型
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {resources.length}
+                </span>
+              </DropdownMenuRadioItem>
+              {types.map((type) => {
+                const count = resources.filter((r) => r.type === type).length;
+                return (
+                  <DropdownMenuRadioItem key={type} value={type}>
+                    <span className="max-w-20 truncate uppercase">{type}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {count}
+                    </span>
+                  </DropdownMenuRadioItem>
+                );
+              })}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Button variant="outline" size="icon-sm" onClick={onRefresh} disabled={exporting} title="刷新">
+          <RefreshCwIcon />
+        </Button>
+
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            onClick={onExport}
+            disabled={exporting || resources.length === 0}
+            title={exportProgress ?? "导出 ZIP"}
+          >
+            <DownloadIcon data-icon="inline-start" />
+            <span>{exportProgress ?? "导出"}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onClear}
+            disabled={exporting || resources.length === 0}
+            title="清空"
+          >
+            <EraserIcon />
+          </Button>
+        </div>
+      </div>
     </header>
   );
 }

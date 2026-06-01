@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import type { Resource } from "../types";
 import { exportZip } from "../utils";
 import { useChromeResources } from "../useChromeResources";
@@ -37,12 +39,17 @@ export function App() {
     }
   }, [filtered, resources, pageUrl]);
 
-  const summaryText = pageUrl
-    ? `${filtered.length} / ${resources.length} 条资源 · ${pageUrl}`
-    : `${filtered.length} / ${resources.length} 条资源`;
+  const pageHost = useMemo(() => {
+    if (!pageUrl) return "等待页面数据";
+    try {
+      return new URL(pageUrl).host || pageUrl;
+    } catch {
+      return pageUrl;
+    }
+  }, [pageUrl]);
 
   return (
-    <div className="w-[480px] max-h-[600px] flex flex-col m-0 font-[inherit]">
+    <div className="flex h-full w-full flex-col bg-background text-foreground">
       <FilterBar
         resources={resources}
         filterType={filterType}
@@ -55,10 +62,33 @@ export function App() {
         exporting={exporting}
         exportProgress={exportProgress}
       />
-      <div className="px-3 py-1.5 text-xs opacity-80">{summaryText}</div>
-      <div className="flex-1 overflow-auto px-3 pt-1 pb-3 text-xs">
+      <section className="px-3 py-2">
+        <Card className="overflow-hidden border-border/70 shadow-none">
+          <CardContent className="grid grid-cols-[1fr_auto] gap-3 p-3">
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-muted-foreground">
+                当前页面
+              </div>
+              <div className="truncate text-sm font-medium" title={pageUrl ?? undefined}>
+                {pageHost}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-medium text-muted-foreground">
+                匹配资源
+              </div>
+              <div className="tabular-nums text-sm font-semibold">
+                {filtered.length}
+                <span className="text-muted-foreground"> / {resources.length}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+      <Separator />
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 text-xs">
         {loading && !resources.length ? (
-          <div className="py-5 text-center opacity-60">
+          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
             {error ? `出错：${error}` : "加载中…"}
           </div>
         ) : (
