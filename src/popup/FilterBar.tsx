@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -55,12 +56,17 @@ export function FilterBar({
     <header className="space-y-3 border-b bg-muted/25 px-3 py-3">
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="m-0 text-base font-semibold leading-none">资源嗅探器</h1>
+          <h1 className="m-0 text-base font-semibold leading-none">
+            资源嗅探器
+          </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             捕获页面中的脚本、样式、图片和媒体资源
           </p>
         </div>
-        <Badge variant="secondary" className="shrink-0 rounded-md">
+        <Badge
+          variant="secondary"
+          className="shrink-0 rounded-md"
+        >
           {resources.length} 项
         </Badge>
       </div>
@@ -81,14 +87,19 @@ export function FilterBar({
           <DropdownMenuTrigger
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
-              "w-[112px] justify-start"
+              " justify-start",
             )}
           >
             <FilterIcon data-icon="inline-start" />
             <span className="truncate">{selectedTypeLabel}</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuLabel>资源类型</DropdownMenuLabel>
+          <DropdownMenuContent
+            align="end"
+            className="w-44"
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>资源类型</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup
               value={selectedMenuValue}
@@ -105,7 +116,10 @@ export function FilterBar({
               {types.map((type) => {
                 const count = resources.filter((r) => r.type === type).length;
                 return (
-                  <DropdownMenuRadioItem key={type} value={type}>
+                  <DropdownMenuRadioItem
+                    key={type}
+                    value={type}
+                  >
                     <span className="max-w-20 truncate uppercase">{type}</span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {count}
@@ -117,7 +131,13 @@ export function FilterBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="outline" size="icon-sm" onClick={onRefresh} disabled={exporting} title="刷新">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={onRefresh}
+          disabled={exporting}
+          title="刷新"
+        >
           <RefreshCwIcon />
         </Button>
 
