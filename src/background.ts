@@ -102,14 +102,24 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (msg.kind === "get-resources") {
-      const map = perTab.get(msg.tabId);
-      chrome.tabs.get(msg.tabId, (tab) => {
-        const resp: GetResourcesResponse = {
-          pageUrl: tab?.url ?? null,
-          resources: map ? Array.from(map.values()) : [],
-        };
-        sendResponse(resp);
-      });
+      // 按需注入 content script 扫描 DOM，而非在所有页面常驻
+      chrome.scripting
+        .executeScript({
+          target: { tabId: msg.tabId, allFrames: true },
+          files: ["content.js"],
+        })
+        .catch(() => {/* 受保护页面（如 chrome://）无法注入，忽略 */})
+        .then(() => new Promise<void>((r) => setTimeout(r, 100)))
+        .then(() => {
+          const map = perTab.get(msg.tabId);
+          chrome.tabs.get(msg.tabId, (tab) => {
+            const resp: GetResourcesResponse = {
+              pageUrl: tab?.url ?? null,
+              resources: map ? Array.from(map.values()) : [],
+            };
+            sendResponse(resp);
+          });
+        });
       return true; // 异步响应
     }
 
