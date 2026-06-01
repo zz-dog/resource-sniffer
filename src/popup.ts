@@ -18,7 +18,18 @@ const searchEl = $("#search") as HTMLInputElement;
 const summaryEl = $("#summary") as HTMLDivElement;
 
 let current: Resource[] = [];
+let filtered: Resource[] = [];
 let currentPageUrl: string | null = null;
+
+function applyFilter(): Resource[] {
+  const q = searchEl.value.trim().toLowerCase();
+  const type = filterEl.value;
+  return current.filter((r) => {
+    if (type && r.type !== type) return false;
+    if (q && !r.url.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
 
 async function activeTabId(): Promise<number> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -44,13 +55,8 @@ function formatSize(n?: number): string {
 }
 
 function render() {
-  const q = searchEl.value.trim().toLowerCase();
-  const type = filterEl.value;
-  const shown = current.filter((r) => {
-    if (type && r.type !== type) return false;
-    if (q && !r.url.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  filtered = applyFilter();
+  const shown = filtered;
 
   // 刷新类型下拉菜单。
   const types = Array.from(new Set(current.map((r) => r.type))).sort();
@@ -179,18 +185,46 @@ function downloadBlob(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** 并发执行任务，限制同时进行的数量。 */
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  task: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      results[i] = await task(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 $("#export").addEventListener("click", async () => {
   const btn = $("#export") as HTMLButtonElement;
+  const refreshBtn = $("#refresh") as HTMLButtonElement;
+  const clearBtn = $("#clear") as HTMLButtonElement;
   if (!current.length) return;
+  // 用筛选后的列表导出，并拍快照避免导出过程中 refresh/clear/筛选变化导致清单错位。
+  const source = filtered.length ? filtered : applyFilter();
+  if (!source.length) return;
   const original = btn.textContent;
+  const snapshot = source.slice();
+  const snapshotPageUrl = currentPageUrl;
   btn.disabled = true;
+  refreshBtn.disabled = true;
+  clearBtn.disabled = true;
 
   try {
-    // 每个子目录维护一份已用文件名集合，避免重名覆盖。
+    // 每个子目录维护一份已用文件名集合，避免重名覆盖。失败的请求不占用文件名。
     const usedPerDir = new Map<string, Set<string>>();
     // fflate 的 zip() 接受 { 路径: Uint8Array } 一次性打包，所以这里先收集字节。
     const files: Record<string, Uint8Array> = {};
-    const manifest: Array<{
+    type ManifestEntry = {
       url: string;
       type: string;
       path: string;
@@ -198,47 +232,67 @@ $("#export").addEventListener("click", async () => {
       error?: string;
       mimeType?: string;
       size?: number;
-    }> = [];
+    };
+    const manifest: ManifestEntry[] = new Array(snapshot.length);
 
     let done = 0;
-    for (const r of current) {
-      done++;
-      btn.textContent = `导出中 ${done}/${current.length}`;
-
-      const dir = (r.type || "other").replace(/[^\w.\-]+/g, "_") || "other";
-      const used = usedPerDir.get(dir) ?? new Set<string>();
-      usedPerDir.set(dir, used);
-      const fname = uniquify(used, fileNameFromUrl(r.url, done));
-      const path = `${dir}/${fname}`;
-
+    // 并发抓取，但文件名分配仍要单线程串行做（共享 Set 不能并发改）。
+    await runWithConcurrency(snapshot, 6, async (r, i) => {
+      let buf: ArrayBuffer | null = null;
+      let mimeType: string | undefined;
+      let error: string | undefined;
       try {
         // popup 运行在扩展上下文中，配合 host_permissions: <all_urls> 可以跨域 fetch。
         const resp = await fetch(r.url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const buf = await resp.arrayBuffer();
+        buf = await resp.arrayBuffer();
+        mimeType = resp.headers.get("content-type") ?? undefined;
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+      }
+
+      // 成功后再占文件名，保证清单里 ok:true 的条目拿到「干净」名字。
+      const dir = (r.type || "other").replace(/[^\w.\-]+/g, "_") || "other";
+      const baseName = fileNameFromUrl(r.url, i + 1);
+      let path: string;
+      if (buf) {
+        const used = usedPerDir.get(dir) ?? new Set<string>();
+        usedPerDir.set(dir, used);
+        const fname = uniquify(used, baseName);
+        path = `${dir}/${fname}`;
         files[path] = new Uint8Array(buf);
-        manifest.push({
+        manifest[i] = {
           url: r.url,
           type: r.type,
           path,
           ok: true,
-          mimeType: resp.headers.get("content-type") ?? undefined,
+          mimeType,
           size: buf.byteLength,
-        });
-      } catch (err) {
-        manifest.push({
+        };
+      } else {
+        // 失败条目记录预期的目录与原始文件名供用户排查，但不写入 zip、不占用槽位。
+        manifest[i] = {
           url: r.url,
           type: r.type,
-          path,
+          path: `${dir}/${baseName}`,
           ok: false,
-          error: err instanceof Error ? err.message : String(err),
-        });
+          error,
+        };
       }
-    }
 
-    // 附一份清单方便对照原始 URL 与抓取结果。
-    files["_index.json"] = new TextEncoder().encode(
-      JSON.stringify({ pageUrl: currentPageUrl, resources: manifest }, null, 2),
+      done++;
+      btn.textContent = `导出中 ${done}/${snapshot.length}`;
+    });
+
+    // 附一份清单方便对照原始 URL 与抓取结果。用 uniquify 防止与资源文件同名冲突。
+    const rootUsed = new Set<string>(
+      Object.keys(files)
+        .filter((p) => !p.includes("/"))
+        .map((p) => p),
+    );
+    const indexName = uniquify(rootUsed, "_index.json");
+    files[indexName] = new TextEncoder().encode(
+      JSON.stringify({ pageUrl: snapshotPageUrl, resources: manifest }, null, 2),
     );
 
     btn.textContent = "打包中…";
@@ -255,6 +309,8 @@ $("#export").addEventListener("click", async () => {
     alert(`导出失败：${err instanceof Error ? err.message : String(err)}`);
   } finally {
     btn.disabled = false;
+    refreshBtn.disabled = false;
+    clearBtn.disabled = false;
     btn.textContent = original;
   }
 });
