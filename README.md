@@ -2,10 +2,10 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-一个使用 TypeScript 编写的 Chrome（Manifest V3）扩展，能够抓取一个网站
+一个使用 TypeScript + React 编写的 Chrome（Manifest V3）扩展，能够抓取一个网站
 使用到的全部资源——既包括通过网络发起的请求（`chrome.webRequest`），
 也包括从实时 DOM/CSS 中扫描出来的资源——并在弹窗中提供按类型筛选、
-按 URL 搜索以及 JSON 导出的能力。
+按 URL 搜索以及 ZIP 导出的能力。
 
 ## 能抓到什么
 
@@ -20,20 +20,63 @@
 两个来源在后台 worker 中按 URL 去重合并，因此弹窗里看到的是每个 tab
 单一的合并列表。
 
+## 功能特性
+
+- 🔍 **双源采集**：网络监听 + DOM/CSS 扫描，遗漏更少
+- 🏷️ **类型筛选**：按资源类型（script / image / stylesheet / media / font 等）快速过滤
+- 🔎 **URL 搜索**：实时搜索匹配资源地址
+- 📦 **ZIP 导出**：一键将全部资源按类型分目录打包下载，附带 JSON 清单
+- 🌙 **深色模式**：自动跟随系统主题，支持亮色 / 暗色切换
+- 🧹 **自动清理**：顶层 frame 跳转时自动清空当前标签页资源列表
+
+## 技术栈
+
+| 类别 | 技术 |
+| --- | --- |
+| 语言 | TypeScript（strict 模式，ES2022） |
+| 框架 | React 19 |
+| 构建工具 | Vite 8 |
+| 样式 | Tailwind CSS v4 |
+| UI 组件 | shadcn/ui + Radix 原语 |
+| 图标 | Lucide React |
+| 字体 | Geist Variable |
+| 压缩 | fflate（客户端 ZIP 生成） |
+| 图像处理 | sharp（构建期 SVG → PNG） |
+
 ## 项目结构
 
 ```text
-public/             静态资源，构建时原样拷贝到 dist/
-  manifest.json     MV3 配置清单
+public/               静态资源，构建时原样拷贝到 dist/
+  manifest.json       MV3 配置清单
   icons/
-    icon.svg        源图标，构建时由 sharp 渲染成 16/48/128 三种 PNG
-popup.html          弹窗 HTML 入口（Vite 入口之一）
+    icon.svg          源图标，构建时由 sharp 渲染成 16/48/128 三种 PNG
+popup.html            弹窗 HTML 入口（Vite 入口之一）
 src/
-  background.ts     Service Worker —— webRequest 监听 + 消息路由
-  content.ts        注入到每个 frame 的 DOM/CSS 扫描脚本
-  popup.ts          弹窗 UI（筛选、搜索、导出）
-  types.ts          共享的消息与记录类型
-vite.config.ts      Vite 配置 + sharpIcons 插件
+  background.ts       Service Worker —— webRequest 监听 + 消息路由
+  content.ts          注入到每个 frame 的 DOM/CSS 扫描脚本
+  types.ts            共享的消息与记录类型
+  utils.ts            工具函数：格式化大小、ZIP 导出、并发控制
+  useChromeResources.ts  React Hook：与 background 通信获取资源
+  style.css           Tailwind 入口 + CSS 变量（亮色 / 暗色）
+  lib/
+    utils.ts          cn() 工具函数（clsx + tailwind-merge）
+  components/ui/      shadcn/ui 基础组件
+    badge.tsx
+    button.tsx
+    card.tsx
+    dropdown-menu.tsx
+    input.tsx
+    scroll-area.tsx
+    separator.tsx
+    tabs.tsx
+  popup/
+    main.tsx          React 挂载入口
+    App.tsx           主布局：筛选状态、导出逻辑、统计卡片
+    FilterBar.tsx     搜索框、类型筛选下拉、刷新/导出/清空按钮
+    ResourceList.tsx  资源列表容器
+    ResourceRow.tsx   单条资源卡片（打开 / 复制操作）
+vite.config.ts        Vite 配置 + sharpIcons 插件
+components.json       shadcn/ui 配置
 tsconfig.json
 package.json
 ```
@@ -47,12 +90,12 @@ pnpm build          # vite build → dist/，并由 sharpIcons 插件生成 PNG 
 
 可用脚本：
 
-|命令|作用|
-|----|----|
-|`pnpm build`|一次性构建到 `dist/`|
-|`pnpm dev`|`vite build --watch`，文件改动后自动重建|
-|`pnpm typecheck`|仅做 TypeScript 类型检查（不产出文件）|
-|`pnpm clean`|删除 `dist/` 目录|
+| 命令 | 作用 |
+| ---- | ---- |
+| `pnpm build` | 一次性构建到 `dist/` |
+| `pnpm dev` | `vite build --watch`，文件改动后自动重建 |
+| `pnpm typecheck` | 仅做 TypeScript 类型检查（不产出文件） |
+| `pnpm clean` | 删除 `dist/` 目录 |
 
 然后在 Chrome 中：
 
