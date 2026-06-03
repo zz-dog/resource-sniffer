@@ -15,7 +15,7 @@ function sharpIcons(): Plugin {
     name: "sharp-icons",
     async closeBundle() {
       const root = resolve(__dirname);
-      const svgPath = resolve(root, "public/icons/icon.svg");
+      const svgPath = resolve(root, "public/icons/logo.svg");
       const iconsDir = resolve(root, "dist/icons");
       if (!existsSync(svgPath)) return;
 
@@ -25,10 +25,7 @@ function sharpIcons(): Plugin {
 
       for (const size of [16, 48, 128]) {
         const out = resolve(iconsDir, `icon${size}.png`);
-        await sharp(svg, { density: 384 })
-          .resize(size, size)
-          .png()
-          .toFile(out);
+        await sharp(svg, { density: 384 }).resize(size, size).png().toFile(out);
       }
 
       const distSvg = resolve(iconsDir, "icon.svg");
