@@ -5,6 +5,7 @@
  * 与网络观察结果去重合并。
  */
 import type { MessageFromContent, Resource } from "./types";
+import { is3dUrl } from "./types";
 
 function toAbs(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -59,6 +60,36 @@ function collectDomResources(): Resource[] {
   for (const e of document.querySelectorAll<HTMLEmbedElement>("embed")) push(e.src, "object");
   for (const o of document.querySelectorAll<HTMLObjectElement>("object")) push(o.data, "object");
 
+  // 3D 模型元素
+  // <model-viewer>（Google Web Component）
+  for (const mv of document.querySelectorAll("model-viewer")) {
+    push(mv.getAttribute("src"), "3d");
+    push(mv.getAttribute("ios-src"), "3d");
+  }
+
+  // A-Frame 实体与资源
+  for (const el of document.querySelectorAll("a-entity, a-scene")) {
+    const gltf = el.getAttribute("gltf-model");
+    if (gltf) push(gltf.replace(/^url\(/, "").replace(/\)$/, ""), "3d");
+    const obj = el.getAttribute("obj-model");
+    if (obj) push(obj, "3d");
+  }
+  for (const asset of document.querySelectorAll("a-asset-item")) {
+    push(asset.getAttribute("src"), "3d");
+  }
+
+  // data-* 属性中的 3D URL（Three.js / Babylon.js 常用模式）
+  for (const el of document.querySelectorAll(
+    "[data-model],[data-gltf],[data-3d-url],[data-scene]"
+  )) {
+    const url =
+      el.getAttribute("data-model") ||
+      el.getAttribute("data-gltf") ||
+      el.getAttribute("data-3d-url") ||
+      el.getAttribute("data-scene");
+    if (url) push(url, "3d");
+  }
+
   // 脚本 / 样式表 / 字体 / 预加载
   for (const s of document.querySelectorAll<HTMLScriptElement>("script[src]")) {
     push(s.src, "script");
@@ -67,7 +98,8 @@ function collectDomResources(): Resource[] {
     const rel = (l.rel || "").toLowerCase();
     const as = (l.as || "").toLowerCase();
     let type = "other";
-    if (rel.includes("stylesheet")) type = "stylesheet";
+    if (is3dUrl(l.href)) type = "3d";
+    else if (rel.includes("stylesheet")) type = "stylesheet";
     else if (rel.includes("icon")) type = "image";
     else if (rel.includes("preload") || rel.includes("prefetch")) {
       type = as || "other";

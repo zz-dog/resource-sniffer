@@ -32,3 +32,36 @@ export interface GetResourcesResponse {
   pageUrl: string | null;
   resources: Resource[];
 }
+
+// --- 3D 资源识别 ---
+
+/** 3D 资源文件扩展名正则（不含 .bin —— 太通用，误报率高）。 */
+export const _3D_EXT_RE =
+  /\.(glb|gltf|obj|fbx|dae|stl|ply|usdz|hdr|exr|ktx|ktx2|babylon|wrl|3ds)(\?.*)?$/i;
+
+/** 判断 URL 是否指向 3D 资源（基于文件扩展名）。 */
+export function is3dUrl(url: string): boolean {
+  const path = url.split("?")[0].split("#")[0];
+  return _3D_EXT_RE.test(path);
+}
+
+/** 3D 相关 MIME 类型集合。 */
+export const _3D_MIME_TYPES = new Set([
+  "model/gltf-binary",
+  "model/gltf+json",
+  "model/obj",
+  "model/stl",
+  "model/ply",
+  "model/vnd.usdz+zip",
+  "model/fbx",
+  "model/collada+xml",
+  "image/vnd.ktx",
+  "image/ktx2",
+  "image/vnd.radiance",
+]);
+
+/** 判断 MIME 类型是否为 3D 资源。 */
+export function is3dMimeType(mime: string | undefined): boolean {
+  if (!mime) return false;
+  return _3D_MIME_TYPES.has(mime.toLowerCase().split(";")[0].trim());
+}

@@ -8,6 +8,7 @@ import type {
   MessageFromPopup,
   Resource,
 } from "./types";
+import { is3dUrl, is3dMimeType } from "./types";
 
 /** tabId -> (url -> Resource)。用 Map 可以保留每个 URL 的最新记录。 */
 const perTab = new Map<number, Map<string, Resource>>();
@@ -47,7 +48,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     if (details.tabId < 0) return; // 后台 / 扩展自身发起的请求
     upsert(details.tabId, {
       url: details.url,
-      type: details.type,
+      type: is3dUrl(details.url) ? "3d" : details.type,
       method: details.method,
       timeStamp: details.timeStamp,
       source: "network",
@@ -62,13 +63,14 @@ chrome.webRequest.onCompleted.addListener(
     const headers = details.responseHeaders ?? [];
     const find = (name: string) =>
       headers.find((h) => h.name.toLowerCase() === name)?.value;
+    const mimeType = find("content-type")?.split(";")[0]?.trim();
     const len = find("content-length");
     upsert(details.tabId, {
       url: details.url,
-      type: details.type,
+      type: is3dUrl(details.url) || is3dMimeType(mimeType) ? "3d" : details.type,
       method: details.method,
       statusCode: details.statusCode,
-      mimeType: find("content-type")?.split(";")[0]?.trim(),
+      mimeType,
       size: len ? Number(len) : undefined,
       timeStamp: details.timeStamp,
       source: "network",
